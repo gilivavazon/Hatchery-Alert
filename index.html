@@ -35,13 +35,13 @@
     const TARGET_PHONE = '0546687696';
     const CYCLE_START_DATE = new Date('2026-01-04');
 
-    // תבנית יומית א'-ה'
+    // תבנית יומית א'-ה' (SMS 1)
     const DEFAULT_WEEKLY_SCHEDULE = { 
       0: 4, // ראשון - מוחמד
-      1: 2, // שני - פריד
+      1: 5, // שני - דניאל
       2: 6, // שלישי - מאור
       3: 3, // רביעי - גיל
-      4: 5  // חמישי - דניאל
+      4: 2  // חמישי - פריד
     };
 
     // סבב סופ"ש (SMS 1 בימי ו'-ש')
@@ -104,7 +104,7 @@
       toast: null,
       hasActiveReplacement: false,
       currentMonth: new Date(),
-      showSmsConfirm: false
+      settingsTab: 'user'
     };
 
     // טעינה מ-LocalStorage
@@ -302,8 +302,17 @@
       const today = new Date();
       const shift = calculateShift(today);
       
-      // הצגת תורנים - בלי גיל (הוא בקרה)
-      const displayNumbers = shift.numbers.filter(num => num !== 3);
+      // הצגת תורנים - מציגים את מי שב-SMS 1 או SMS 2
+      // גיל מוצג רק אם הוא תורן יומי (SMS 1) או תורן שבועי (SMS 2), לא רק בגלל בקרה (SMS 3)
+      const displayNumbers = [];
+      if (shift.sms1 !== 3 || shift.sms1 === shift.sms2) {
+        displayNumbers.push(shift.sms1);
+      }
+      if (shift.sms2 !== shift.sms1) {
+        displayNumbers.push(shift.sms2);
+      }
+      // אם גיל הוא התורן היומי (SMS 1), הוא כבר נוסף למעלה
+      // אם גיל הוא התורן השבועי (SMS 2), הוא כבר נוסף למעלה
       
       const shiftDisplay = displayNumbers.map(num => {
         const emp = EMPLOYEES[num];
@@ -506,6 +515,115 @@
         </button>
       `).join('');
 
+      const weeklyRows = [0, 1, 2, 3, 4].map(day => {
+        const options = Object.values(EMPLOYEES).map(emp => 
+          `<option value="${emp.number}" ${state.weeklySchedule[day] === emp.number ? 'selected' : ''}>${emp.name}</option>`
+        ).join('');
+        return `
+          <div class="flex items-center justify-between">
+            <span class="text-slate-300 w-20">יום ${DAYS_SHORT[day]}</span>
+            <select onchange="updateWeekly(${day}, this.value)" class="flex-1 mr-3 py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
+              ${options}
+            </select>
+          </div>
+        `;
+      }).join('');
+
+      const weekendRows = [0, 1, 2, 3].map(week => {
+        const options = Object.values(EMPLOYEES).map(emp => 
+          `<option value="${emp.number}" ${state.weekendSchedule[week] === emp.number ? 'selected' : ''}>${emp.name}</option>`
+        ).join('');
+        return `
+          <div class="flex items-center justify-between">
+            <span class="text-slate-300 w-20">שבוע ${week + 1}</span>
+            <select onchange="updateWeekend(${week}, this.value)" class="flex-1 mr-3 py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
+              ${options}
+            </select>
+          </div>
+        `;
+      }).join('');
+
+      const rotationRows = [0, 1, 2, 3].map(week => {
+        const options = Object.values(EMPLOYEES).map(emp => 
+          `<option value="${emp.number}" ${state.weeklyRotation[week] === emp.number ? 'selected' : ''}>${emp.name}</option>`
+        ).join('');
+        return `
+          <div class="flex items-center justify-between">
+            <span class="text-slate-300 w-20">שבוע ${week + 1}</span>
+            <select onchange="updateRotation(${week}, this.value)" class="flex-1 mr-3 py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
+              ${options}
+            </select>
+          </div>
+        `;
+      }).join('');
+
+      const tabs = [
+        { id: 'user', label: 'משתמש' },
+        { id: 'daily', label: 'יומי' },
+        { id: 'weekend', label: "סופ\"ש" },
+        { id: 'weekly', label: 'שבועי' }
+      ];
+
+      const tabsHtml = tabs.map(tab => `
+        <button onclick="setSettingsTab('${tab.id}')" class="flex-1 py-2 rounded-lg text-sm font-medium transition-all ${state.settingsTab === tab.id ? 'bg-amber-500 text-white' : 'bg-slate-700/30 text-slate-400'}">
+          ${tab.label}
+        </button>
+      `).join('');
+
+      let contentHtml = '';
+      
+      if (state.settingsTab === 'user') {
+        contentHtml = `
+          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
+            <h3 class="text-white font-medium mb-4">👤 משתמש נוכחי</h3>
+            <div class="space-y-2">
+              ${userButtons}
+            </div>
+          </div>
+          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
+            <h3 class="text-white font-medium mb-4">📞 מספר טלפון יעד</h3>
+            <div class="bg-slate-700/30 rounded-xl p-4 text-center">
+              <span class="text-amber-400 font-mono text-xl">${TARGET_PHONE}</span>
+              <p class="text-slate-500 text-xs mt-2">מספר זה קבוע ולא ניתן לשינוי</p>
+            </div>
+          </div>
+        `;
+      } else if (state.settingsTab === 'daily') {
+        contentHtml = `
+          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
+            <h3 class="text-white font-medium mb-4">📅 תורן יומי (א'-ה')</h3>
+            <p class="text-slate-400 text-sm mb-4">מי מקבל אזעקות בכל יום</p>
+            <div class="space-y-3">
+              ${weeklyRows}
+            </div>
+          </div>
+        `;
+      } else if (state.settingsTab === 'weekend') {
+        contentHtml = `
+          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
+            <h3 class="text-white font-medium mb-4">🔁 סבב סופ"ש (ו'-ש')</h3>
+            <p class="text-slate-400 text-sm mb-4">תורן יומי בימי שישי-שבת</p>
+            <div class="space-y-3">
+              ${weekendRows}
+            </div>
+          </div>
+          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
+            <h3 class="text-white font-medium mb-4">📆 תאריך התחלת סבב</h3>
+            <input type="date" value="${state.cycleStartDate.toISOString().split('T')[0]}" onchange="updateCycleStart(this.value)" class="w-full py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
+          </div>
+        `;
+      } else if (state.settingsTab === 'weekly') {
+        contentHtml = `
+          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
+            <h3 class="text-white font-medium mb-4">🔄 תורן שבועי</h3>
+            <p class="text-slate-400 text-sm mb-4">מתחלף כל יום ראשון - מקבל אזעקות כל השבוע</p>
+            <div class="space-y-3">
+              ${rotationRows}
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 pb-8">
           <button onclick="navigate('main')" class="flex items-center gap-2 text-slate-400 mb-6">
@@ -515,20 +633,11 @@
           
           <h2 class="text-xl font-bold text-white mb-6">הגדרות</h2>
           
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
-            <h3 class="text-white font-medium mb-4">👤 משתמש נוכחי</h3>
-            <div class="space-y-2">
-              ${userButtons}
-            </div>
+          <div class="flex gap-2 mb-6">
+            ${tabsHtml}
           </div>
-
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
-            <h3 class="text-white font-medium mb-4">📞 מספר טלפון יעד</h3>
-            <div class="bg-slate-700/30 rounded-xl p-4 text-center">
-              <span class="text-amber-400 font-mono text-xl">${TARGET_PHONE}</span>
-              <p class="text-slate-500 text-xs mt-2">מספר זה קבוע ולא ניתן לשינוי</p>
-            </div>
-          </div>
+          
+          ${contentHtml}
         </div>
       `;
     }
@@ -536,7 +645,7 @@
     function renderReportsScreen() {
       const stats = {};
       Object.values(EMPLOYEES).forEach(emp => {
-        if (emp.number !== 3) stats[emp.name] = 0;
+        stats[emp.name] = 0;
       });
       
       let emergencyCount = 0;
@@ -666,8 +775,8 @@
           bgClass = isWeekend ? 'bg-purple-900/50 border-purple-400/50' : 'bg-emerald-900/30 border-emerald-500/30';
         }
         
-        // הצגת התורן (לא כולל גיל)
-        const mainShift = shift.sms1 !== 3 ? shift.sms1 : shift.sms2;
+        // הצגת התורן היומי (SMS 1)
+        const mainShift = shift.sms1;
         
         daysHtml += `
           <div class="aspect-square rounded-lg p-1 flex flex-col items-center justify-center text-xs border ${bgClass}">
@@ -731,167 +840,4 @@
 
           <!-- הערת אחזקה -->
           <div class="mt-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-            <p class="text-slate-400 text-sm">🔧 תקלות אחזקה דחופות: <span class="text-white font-medium">מאור</span></p>
-          </div>
-        </div>
-      `;
-    }
-
-    // ========== Event Handlers ==========
-    function selectUser(num) {
-      state.currentUser = num;
-      saveState();
-      render();
-    }
-
-    function changeUser(num) {
-      state.currentUser = num;
-      saveState();
-      showToast(`נבחר: ${EMPLOYEES[num].name}`, 'success');
-    }
-
-    function navigate(screen) {
-      state.currentScreen = screen;
-      render();
-    }
-
-    function showSmsConfirmScreen() {
-      state.currentScreen = 'smsConfirm';
-      render();
-    }
-
-    function handleSendShift() {
-      const today = new Date();
-      const shift = calculateShift(today);
-      
-      const entry = {
-        date: today.toISOString(),
-        dayOfWeek: today.getDay(),
-        sms1: EMPLOYEES[shift.sms1]?.name,
-        sms2: EMPLOYEES[shift.sms2]?.name,
-        sms3: EMPLOYEES[3]?.name,
-        message: shift.message,
-        time: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
-        replacement: null,
-        isEmergency: false
-      };
-      
-      state.history.unshift(entry);
-      state.currentScreen = 'main';
-      saveState();
-      showToast('נפתחה אפליקציית SMS', 'success');
-      sendSMS(shift.message);
-    }
-
-    function handleReplacement(replacementNum) {
-      const today = new Date();
-      const shift = calculateShift(today);
-      const newNumbers = [...new Set([...shift.numbers.filter(n => n !== state.currentUser), replacementNum])].sort((a, b) => a - b);
-      const message = '!N' + newNumbers.join('');
-      
-      const entry = {
-        date: today.toISOString(),
-        dayOfWeek: today.getDay(),
-        sms1: EMPLOYEES[shift.sms1]?.name,
-        sms2: EMPLOYEES[shift.sms2]?.name,
-        sms3: EMPLOYEES[3]?.name,
-        message: message,
-        time: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
-        replacement: `${EMPLOYEES[state.currentUser]?.name}→${EMPLOYEES[replacementNum]?.name}`,
-        isEmergency: false
-      };
-      
-      state.history.unshift(entry);
-      state.hasActiveReplacement = true;
-      saveState();
-      showToast('החלפה נשלחה!', 'success');
-      sendSMS(message);
-      navigate('main');
-    }
-
-    function handleReturnToShift() {
-      const today = new Date();
-      const shift = calculateShift(today);
-      
-      const entry = {
-        date: today.toISOString(),
-        dayOfWeek: today.getDay(),
-        sms1: EMPLOYEES[shift.sms1]?.name,
-        sms2: EMPLOYEES[shift.sms2]?.name,
-        sms3: EMPLOYEES[3]?.name,
-        message: shift.message,
-        time: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
-        replacement: 'חזרה לתורנות',
-        isEmergency: false
-      };
-      
-      state.history.unshift(entry);
-      state.hasActiveReplacement = false;
-      saveState();
-      showToast('חזרת לתורנות!', 'success');
-      sendSMS(shift.message);
-    }
-
-    function handleEmergency() {
-      const message = '!N23456';
-      const today = new Date();
-      
-      const entry = {
-        date: today.toISOString(),
-        dayOfWeek: today.getDay(),
-        sms1: 'כולם',
-        sms2: 'כולם',
-        sms3: 'כולם',
-        message: message,
-        time: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
-        replacement: null,
-        isEmergency: true
-      };
-      
-      state.history.unshift(entry);
-      saveState();
-      showToast('אזעקת חירום נשלחה!', 'warning');
-      sendSMS(message);
-      navigate('main');
-    }
-
-    function prevMonth() {
-      state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() - 1, 1);
-      render();
-    }
-
-    function nextMonth() {
-      state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() + 1, 1);
-      render();
-    }
-
-    function exportToCSV() {
-      const headers = ['תאריך', 'יום', 'SMS1', 'SMS2', 'SMS3', 'הודעה', 'שעה', 'החלפה', 'חירום'];
-      const rows = state.history.map(h => [
-        formatDateHeb(new Date(h.date)),
-        DAYS_SHORT[h.dayOfWeek],
-        h.sms1,
-        h.sms2,
-        h.sms3,
-        h.message,
-        h.time,
-        h.replacement || 'לא',
-        h.isEmergency ? 'כן' : 'לא'
-      ]);
-      
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `תורנויות_${formatDateHeb(new Date())}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    // ========== אתחול ==========
-    loadState();
-    render();
-  </script>
-</body>
-</html>
+            <p class="text-slate-40
