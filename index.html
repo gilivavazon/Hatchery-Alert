@@ -1,843 +1,627 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0f172a">
-  <title>תורנות אזעקות - מדגרת מולדת</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    @keyframes slideDown {
-      from { opacity: 0; transform: translate(-50%, -20px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
-    }
-    .animate-slideDown { animation: slideDown 0.3s ease-out; }
-    select { background-image: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול תורנות - מדגרת מולדת</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest"
+        href="data:application/json;base64,ewogICJuYW1lIjogIiRNb2xlZGV0IEFbYXJtcyIsCiAgInNob3J0X25hbWUiOiAiTW9sZWRldCIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZmZmZmZmIiwKICAidGhlbWVfY29sb3IiOiAiIzRmNDZlNSIKfQ==">
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Calendar Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        .active-tab {
+            color: #4f46e5 !important;
+            border-bottom-color: #4f46e5 !important;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen">
-  <div id="app"></div>
-
-  <script>
-    // ========== נתונים ==========
-    const EMPLOYEES = {
-      2: { name: 'פריד', number: 2 },
-      3: { name: 'גיל', number: 3 },
-      4: { name: 'מוחמד', number: 4 },
-      5: { name: 'דניאל', number: 5 },
-      6: { name: 'מאור', number: 6 }
-    };
-
-    const TARGET_PHONE = '0546687696';
-    const CYCLE_START_DATE = new Date('2026-01-04');
-
-    // תבנית יומית א'-ה' (SMS 1)
-    const DEFAULT_WEEKLY_SCHEDULE = { 
-      0: 4, // ראשון - מוחמד
-      1: 5, // שני - דניאל
-      2: 6, // שלישי - מאור
-      3: 3, // רביעי - גיל
-      4: 2  // חמישי - פריד
-    };
-
-    // סבב סופ"ש (SMS 1 בימי ו'-ש')
-    const DEFAULT_WEEKEND_SCHEDULE = [5, 4, 2, 6]; // דניאל, מוחמד, פריד, מאור
-
-    // סבב שבועי (SMS 2 - מתחלף כל יום ראשון)
-    const DEFAULT_WEEKLY_ROTATION = [6, 5, 4, 2]; // מאור, דניאל, מוחמד, פריד
-
-    const DAYS_HEB = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-    const DAYS_SHORT = ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"];
-
-    // חגי ישראל 2026
-    const HOLIDAYS_2026 = {
-      '2026-03-16': 'פורים',
-      '2026-03-17': 'שושן פורים',
-      '2026-03-30': 'עיד אל-פיטר',
-      '2026-03-31': 'עיד אל-פיטר',
-      '2026-04-01': 'עיד אל-פיטר',
-      '2026-04-02': 'פסח',
-      '2026-04-03': 'פסח',
-      '2026-04-04': 'פסח',
-      '2026-04-05': 'פסח',
-      '2026-04-06': 'פסח',
-      '2026-04-07': 'פסח',
-      '2026-04-08': 'פסח',
-      '2026-04-22': 'יום העצמאות',
-      '2026-05-21': 'שבועות',
-      '2026-06-06': 'עיד אל-אדחא',
-      '2026-06-07': 'עיד אל-אדחא',
-      '2026-06-08': 'עיד אל-אדחא',
-      '2026-06-09': 'עיד אל-אדחא',
-      '2026-09-12': 'ראש השנה',
-      '2026-09-13': 'ראש השנה',
-      '2026-09-21': 'יום כיפור',
-      '2026-09-26': 'סוכות',
-      '2026-09-27': 'סוכות',
-      '2026-09-28': 'סוכות',
-      '2026-09-29': 'סוכות',
-      '2026-09-30': 'סוכות',
-      '2026-10-01': 'סוכות',
-      '2026-10-02': 'סוכות',
-      '2026-10-03': 'שמחת תורה',
-      '2026-12-26': 'חנוכה',
-      '2026-12-27': 'חנוכה',
-      '2026-12-28': 'חנוכה',
-      '2026-12-29': 'חנוכה',
-      '2026-12-30': 'חנוכה',
-      '2026-12-31': 'חנוכה'
-    };
-
-    // ========== State ==========
-    let state = {
-      currentUser: null,
-      weeklySchedule: { ...DEFAULT_WEEKLY_SCHEDULE },
-      weekendSchedule: [...DEFAULT_WEEKEND_SCHEDULE],
-      weeklyRotation: [...DEFAULT_WEEKLY_ROTATION],
-      cycleStartDate: CYCLE_START_DATE,
-      history: [],
-      currentScreen: 'main',
-      toast: null,
-      hasActiveReplacement: false,
-      currentMonth: new Date(),
-      settingsTab: 'user'
-    };
-
-    // טעינה מ-LocalStorage
-    function loadState() {
-      try {
-        const user = localStorage.getItem('alertsApp_currentUser');
-        if (user) state.currentUser = parseInt(user);
-        
-        const weekly = localStorage.getItem('alertsApp_weeklySchedule');
-        if (weekly) state.weeklySchedule = JSON.parse(weekly);
-        
-        const weekend = localStorage.getItem('alertsApp_weekendSchedule');
-        if (weekend) state.weekendSchedule = JSON.parse(weekend);
-
-        const rotation = localStorage.getItem('alertsApp_weeklyRotation');
-        if (rotation) state.weeklyRotation = JSON.parse(rotation);
-        
-        const cycleStart = localStorage.getItem('alertsApp_cycleStartDate');
-        if (cycleStart) state.cycleStartDate = new Date(cycleStart);
-        
-        const history = localStorage.getItem('alertsApp_history');
-        if (history) state.history = JSON.parse(history);
-
-        const replacement = localStorage.getItem('alertsApp_hasActiveReplacement');
-        if (replacement) state.hasActiveReplacement = JSON.parse(replacement);
-      } catch (e) {
-        console.error('Error loading state:', e);
-      }
-    }
-
-    function saveState() {
-      try {
-        if (state.currentUser) localStorage.setItem('alertsApp_currentUser', state.currentUser);
-        localStorage.setItem('alertsApp_weeklySchedule', JSON.stringify(state.weeklySchedule));
-        localStorage.setItem('alertsApp_weekendSchedule', JSON.stringify(state.weekendSchedule));
-        localStorage.setItem('alertsApp_weeklyRotation', JSON.stringify(state.weeklyRotation));
-        localStorage.setItem('alertsApp_cycleStartDate', state.cycleStartDate.toISOString());
-        localStorage.setItem('alertsApp_history', JSON.stringify(state.history));
-        localStorage.setItem('alertsApp_hasActiveReplacement', JSON.stringify(state.hasActiveReplacement));
-      } catch (e) {
-        console.error('Error saving state:', e);
-      }
-    }
-
-    // ========== פונקציות עזר ==========
-    function formatDateHeb(date) {
-      return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-    }
-
-    function formatDateKey(date) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-
-    function getWeekNumber(date) {
-      const daysDiff = Math.floor((date - state.cycleStartDate) / (1000 * 60 * 60 * 24));
-      let weekNum = Math.floor(daysDiff / 7) % 4;
-      if (weekNum < 0) weekNum = (weekNum + 4) % 4;
-      return weekNum;
-    }
-
-    function calculateShift(date) {
-      const daysDiff = Math.floor((date - state.cycleStartDate) / (1000 * 60 * 60 * 24));
-      const dayOfWeek = date.getDay();
-      const weekNum = getWeekNumber(date);
-      
-      let sms1, sms2;
-      
-      // SMS 1: תורן יומי
-      if (dayOfWeek >= 0 && dayOfWeek <= 4) {
-        // ימים א'-ה': תבנית קבועה
-        sms1 = state.weeklySchedule[dayOfWeek];
-      } else {
-        // ימים ו'-ש': סבב סופ"ש
-        sms1 = state.weekendSchedule[weekNum];
-      }
-      
-      // SMS 2: תורן שבועי (מתחלף כל יום ראשון)
-      sms2 = state.weeklyRotation[weekNum];
-      
-      // SMS 3: תמיד גיל (בקרה)
-      const sms3 = 3;
-      
-      // הסרת כפילויות ומיון
-      const numbers = [...new Set([sms1, sms2, sms3])].sort((a, b) => a - b);
-      
-      return {
-        sms1, sms2, sms3, numbers,
-        message: '!N' + numbers.join(''),
-        isWeekend: dayOfWeek === 5 || dayOfWeek === 6
-      };
-    }
-
-    function showToast(message, type = 'success') {
-      state.toast = { message, type };
-      render();
-      setTimeout(() => {
-        state.toast = null;
-        render();
-      }, 3000);
-    }
-
-    function sendSMS(message) {
-      window.location.href = `sms:${TARGET_PHONE}?body=${encodeURIComponent(message)}`;
-    }
-
-    function isHoliday(date) {
-      const key = formatDateKey(date);
-      return HOLIDAYS_2026[key] || null;
-    }
-
-    // ========== רנדור ==========
-    function render() {
-      const app = document.getElementById('app');
-      
-      if (!state.currentUser) {
-        app.innerHTML = renderUserSelection();
-      } else {
-        switch (state.currentScreen) {
-          case 'main':
-            app.innerHTML = renderMainScreen();
-            break;
-          case 'smsConfirm':
-            app.innerHTML = renderSmsConfirmScreen();
-            break;
-          case 'replacement':
-            app.innerHTML = renderReplacementScreen();
-            break;
-          case 'emergency':
-            app.innerHTML = renderEmergencyScreen();
-            break;
-          case 'settings':
-            app.innerHTML = renderSettingsScreen();
-            break;
-          case 'reports':
-            app.innerHTML = renderReportsScreen();
-            break;
-          case 'calendar':
-            app.innerHTML = renderCalendarScreen();
-            break;
-        }
-      }
-      
-      if (state.toast) {
-        app.innerHTML += renderToast();
-      }
-    }
-
-    function renderToast() {
-      const { message, type } = state.toast;
-      const bgColor = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-amber-500';
-      const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠';
-      
-      return `
-        <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-slideDown ${bgColor} text-white">
-          <span class="text-lg">${icon}</span>
-          <span class="font-medium">${message}</span>
-        </div>
-      `;
-    }
-
-    function renderUserSelection() {
-      const employeeButtons = Object.values(EMPLOYEES).map(emp => `
-        <button onclick="selectUser(${emp.number})" class="w-full py-4 px-6 bg-slate-700/50 hover:bg-slate-600/50 text-white rounded-xl transition-all duration-200 flex items-center justify-between group border border-slate-600/30 hover:border-amber-500/50 active:scale-[0.98]">
-          <span class="font-medium">${emp.name}</span>
-          <span class="text-slate-500 group-hover:text-amber-400 transition-colors">(${emp.number})</span>
-        </button>
-      `).join('');
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-          <div class="w-full max-w-sm">
-            <div class="text-center mb-8">
-              <div class="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-amber-500/30">
-                <span class="text-4xl">🔔</span>
-              </div>
-              <h1 class="text-2xl font-bold text-white mb-2">תורנות אזעקות</h1>
-              <p class="text-slate-400">מדגרת מולדת</p>
+<body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
+    <!-- App Container -->
+    <div id="app" class="flex-1 flex flex-col max-w-md mx-auto w-full bg-white shadow-lg relative min-h-screen">
+        <!-- Header -->
+        <header class="bg-indigo-600 text-white p-4 shadow-md z-10">
+            <h1 class="text-xl font-bold text-center">מדגרת מולדת - תורנות</h1>
+        </header>
+        <!-- Views -->
+        <main class="flex-1 overflow-y-auto p-4 relative pb-20">
+            <!-- View: User Selection (First Run) -->
+            <div id="view-user-select" class="view section hidden space-y-6">
+                <div class="text-center space-y-2">
+                    <h2 class="text-2xl font-bold text-gray-800">ברוך הבא!</h2>
+                    <p class="text-gray-600">מי אתה?</p>
+                </div>
+                <div id="user-list" class="grid gap-3">
+                    <!-- User buttons generated here -->
+                </div>
             </div>
-            
-            <div class="bg-slate-800/50 backdrop-blur rounded-2xl p-6 border border-slate-700/50">
-              <p class="text-slate-300 text-center mb-4 text-sm">בחר את שמך:</p>
-              <div class="space-y-3">
-                ${employeeButtons}
-              </div>
+            <!-- View: Main Screen -->
+            <div id="view-main" class="view section hidden space-y-6">
+                <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100 text-center">
+                    <p class="text-sm text-indigo-600 font-medium mb-1" id="current-date-display">--/--/----</p>
+                    <h2 class="text-2xl font-bold text-indigo-900 mb-2">אזעקות תורן יופעלו אצל:</h2>
+                    <div id="active-shifters-list" class="flex flex-wrap justify-center gap-2 mt-3">
+                        <!-- Shifter badges -->
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <button id="btn-activate-me"
+                        class="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg transform transition active:scale-95 text-lg font-bold flex items-center justify-center gap-2">
+                        <span>🔔</span>
+                        <span>הפעל אצלי אזעקות תורן</span>
+                    </button>
+                    <button id="btn-back-to-duty"
+                        class="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow hidden font-medium">
+                        חזרתי לתורנות
+                    </button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="btn-replace"
+                            class="py-3 px-4 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50">
+                            🔄 צריך מחליף?
+                        </button>
+                        <button id="btn-emergency"
+                            class="py-3 px-4 bg-red-100 border-2 border-red-200 text-red-700 rounded-xl font-medium hover:bg-red-200">
+                            🚨 הפעל את כולם
+                        </button>
+                    </div>
+                    <button onclick="showView('view-reports')"
+                        class="w-full py-2 text-sm text-indigo-600 font-medium bg-indigo-50 rounded mt-2">
+                        📊 צפה בדוחות
+                    </button>
+                </div>
             </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderMainScreen() {
-      const today = new Date();
-      const shift = calculateShift(today);
-      
-      // הצגת תורנים - מציגים את מי שב-SMS 1 או SMS 2
-      // גיל מוצג רק אם הוא תורן יומי (SMS 1) או תורן שבועי (SMS 2), לא רק בגלל בקרה (SMS 3)
-      const displayNumbers = [];
-      if (shift.sms1 !== 3 || shift.sms1 === shift.sms2) {
-        displayNumbers.push(shift.sms1);
-      }
-      if (shift.sms2 !== shift.sms1) {
-        displayNumbers.push(shift.sms2);
-      }
-      // אם גיל הוא התורן היומי (SMS 1), הוא כבר נוסף למעלה
-      // אם גיל הוא התורן השבועי (SMS 2), הוא כבר נוסף למעלה
-      
-      const shiftDisplay = displayNumbers.map(num => {
-        const emp = EMPLOYEES[num];
-        const isCurrentUser = num === state.currentUser;
-        return `
-          <div class="flex items-center justify-between py-3 px-4 rounded-xl transition-all ${isCurrentUser ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-700/30 border border-slate-600/20'}">
-            <div class="flex items-center gap-3">
-              <span class="text-emerald-400">✓</span>
-              <span class="font-medium ${isCurrentUser ? 'text-amber-300' : 'text-white'}">${emp.name}</span>
-              ${isCurrentUser ? '<span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">אתה</span>' : ''}
+            <!-- View: Warning (Pre-SMS) -->
+            <div id="view-warning" class="view section hidden space-y-6 pt-10">
+                <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <span class="text-2xl">⚠️</span>
+                        </div>
+                        <div class="mr-3">
+                            <p class="text-sm text-red-700">
+                                יש לבטל את כל החסימות הקיימות במכשיר למספר <span class="font-mono font-bold"
+                                    id="lbl-sms-target">0546687696</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center space-y-4">
+                    <p class="text-gray-600">
+                        לאחר לחיצה על הכפתור, תיפתח אפליקציית ה-SMS.<br>
+                        <strong>יש ללחוץ 'שלח' באפליקציית ה-SMS כדי להשלים את הפעולה.</strong>
+                    </p>
+                </div>
+                <button id="btn-confirm-activate"
+                    class="w-full py-4 px-6 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg text-lg font-bold flex items-center justify-center gap-2">
+                    <span>🚀</span>
+                    <span>הפעל אצלי אזעקות תורן</span>
+                </button>
+                <button onclick="showView('view-main')" class="w-full py-3 text-gray-500 font-medium">
+                    ביטול וחזרה
+                </button>
             </div>
-          </div>
-        `;
-      }).join('');
-
-      const returnButton = state.hasActiveReplacement ? `
-        <button onclick="handleReturnToShift()" class="w-full py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-2xl font-medium border border-emerald-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-3">
-          <span>↩️</span>
-          חזרתי לתורנות
-        </button>
-      ` : '';
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 pb-24">
-          <div class="text-center mb-6">
-            <div class="inline-flex items-center gap-2 bg-slate-800/50 px-4 py-2 rounded-full border border-slate-700/50 mb-4">
-              <span class="text-amber-400">📅</span>
-              <span class="text-slate-300 text-sm">יום ${DAYS_HEB[today.getDay()]}, ${formatDateHeb(today)}</span>
+            <!-- View: Replacement -->
+            <div id="view-replace" class="view section hidden space-y-6">
+                <h2 class="text-xl font-bold text-center text-gray-800">בחר מחליף</h2>
+                <div id="replace-list" class="grid gap-3"></div>
+                <button onclick="showView('view-main')"
+                    class="w-full py-3 text-gray-500 font-medium bg-gray-100 rounded-lg">
+                    ביטול
+                </button>
             </div>
-          </div>
-
-          <div class="bg-slate-800/50 backdrop-blur rounded-2xl p-5 border border-slate-700/50 mb-4">
-            <h3 class="text-white font-semibold mb-4 flex items-center gap-2">
-              <span class="text-amber-400">👥</span>
-              אזעקות תורן יופעלו אצל:
-            </h3>
-            <div class="space-y-2">
-              ${shiftDisplay}
+            <!-- View: Emergency -->
+            <div id="view-emergency" class="view section hidden space-y-6 pt-10">
+                <div class="text-center space-y-2">
+                    <span class="text-6xl">🚨</span>
+                    <h2 class="text-2xl font-bold text-red-600">חירום!</h2>
+                    <p class="text-lg font-bold">האם להפעיל את כל 5 העובדים?</p>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg text-sm text-gray-600">
+                    <p>ישלח SMS:</p>
+                    <code class="block text-center text-lg font-mono font-bold mt-2">!N23456</code>
+                </div>
+                <div class="space-y-3">
+                    <button id="btn-confirm-emergency"
+                        class="w-full py-4 px-6 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg text-lg font-bold animate-pulse">
+                        כן, שלח לכולם!
+                    </button>
+                    <button onclick="showView('view-main')"
+                        class="w-full py-3 text-gray-500 font-medium bg-white border border-gray-300 rounded-xl">
+                        ביטול - לא קרה כלום
+                    </button>
+                </div>
             </div>
-          </div>
-
-          <button onclick="showSmsConfirmScreen()" class="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-amber-500/30 active:scale-[0.98] transition-transform flex items-center justify-center gap-3 mb-3">
-            <span>📤</span>
-            הפעל אצלי אזעקות תורן
-          </button>
-
-          ${returnButton}
-
-          <button onclick="navigate('replacement')" class="w-full py-4 bg-slate-700/50 hover:bg-slate-600/50 text-white rounded-2xl font-medium border border-slate-600/50 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-3">
-            <span>🔄</span>
-            צריך מחליף?
-          </button>
-
-          <button onclick="navigate('emergency')" class="w-full py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl font-medium border border-red-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
-            <span>⚠️</span>
-            הפעל את כולם
-          </button>
-
-          <div class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-700/50 px-4 py-3">
-            <div class="flex justify-around max-w-sm mx-auto">
-              <button onclick="navigate('reports')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-amber-400 transition-colors">
-                <span class="text-xl">📊</span>
-                <span class="text-xs">דוחות</span>
-              </button>
-              <button onclick="navigate('calendar')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-amber-400 transition-colors">
+            <!-- View: Calendar -->
+            <div id="view-calendar" class="view section hidden space-y-4">
+                <div class="flex items-center justify-between p-2">
+                    <button onclick="changeMonth(-1)" class="p-2 bg-gray-100 rounded-full">◀️</button>
+                    <h2 id="calendar-title" class="text-xl font-bold text-gray-800"></h2>
+                    <button onclick="changeMonth(1)" class="p-2 bg-gray-100 rounded-full">▶️</button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
+                    <div>א</div>
+                    <div>ב</div>
+                    <div>ג</div>
+                    <div>ד</div>
+                    <div>ה</div>
+                    <div class="text-indigo-600 font-bold">ו</div>
+                    <div class="text-indigo-600 font-bold">ש</div>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- Calendar Days -->
+                </div>
+                <div class="mt-4 bg-orange-50 p-2 rounded text-center text-sm text-orange-800 border border-orange-200">
+                    <strong>🔧 תקלות אחזקה דחופות: מאור</strong>
+                </div>
+            </div>
+            <!-- View: Settings -->
+            <div id="view-settings" class="view section hidden space-y-4">
+                <h2 class="text-xl font-bold text-center mb-4">הגדרות</h2>
+                <!-- Tabs -->
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button onclick="switchTab('tab-user')"
+                        class="tab-btn flex-1 py-2 text-center text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 active-tab"
+                        data-tab="tab-user">משתמש</button>
+                    <button onclick="switchTab('tab-daily')"
+                        class="tab-btn flex-1 py-2 text-center text-sm font-medium text-gray-500 hover:text-gray-700"
+                        data-tab="tab-daily">יומי</button>
+                    <button onclick="switchTab('tab-weekend')"
+                        class="tab-btn flex-1 py-2 text-center text-sm font-medium text-gray-500 hover:text-gray-700"
+                        data-tab="tab-weekend">סופ"ש</button>
+                    <button onclick="switchTab('tab-weekly')"
+                        class="tab-btn flex-1 py-2 text-center text-sm font-medium text-gray-500 hover:text-gray-700"
+                        data-tab="tab-weekly">שבועי</button>
+                </div>
+                <!-- Tab: User -->
+                <div id="tab-user" class="tab-content space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">משתמש נוכחי</label>
+                        <select id="settings-user-select"
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
+                            onchange="selectUser(parseInt(this.value))">
+                            <!-- Options -->
+                        </select>
+                    </div>
+                </div>
+                <!-- Tab: Daily -->
+                <div id="tab-daily" class="tab-content hidden space-y-4">
+                    <h3 class="font-bold text-sm">תבנית קבועה (א'-ה')</h3>
+                    <div id="settings-daily-list" class="space-y-2"></div>
+                    <button onclick="savePatterns()"
+                        class="w-full py-2 bg-indigo-600 text-white rounded font-bold mt-2">שמור שינויים</button>
+                </div>
+                <!-- Tab: Weekend -->
+                <div id="tab-weekend" class="tab-content hidden space-y-4">
+                    <h3 class="font-bold text-sm">סבב סופ"ש (ו'-ש')</h3>
+                    <div id="settings-weekend-list" class="space-y-2"></div>
+                    <button onclick="savePatterns()"
+                        class="w-full py-2 bg-indigo-600 text-white rounded font-bold mt-2">שמור שינויים</button>
+                </div>
+                <!-- Tab: Weekly -->
+                <div id="tab-weekly" class="tab-content hidden space-y-4">
+                    <h3 class="font-bold text-sm">סבב שבועי (מתחלף בא')</h3>
+                    <div id="settings-weekly-list" class="space-y-2"></div>
+                    <button onclick="savePatterns()"
+                        class="w-full py-2 bg-indigo-600 text-white rounded font-bold mt-2">שמור שינויים</button>
+                </div>
+            </div>
+            <!-- View: Reports -->
+            <div id="view-reports" class="view section hidden space-y-4">
+                <h2 class="text-xl font-bold text-center mb-4">היסטוריית הפעלות</h2>
+                <div class="overflow-x-auto bg-white border border-gray-200 rounded">
+                    <table class="min-w-full text-xs text-right">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-2 border-b">תאריך</th>
+                                <th class="p-2 border-b">משתמש</th>
+                                <th class="p-2 border-b">סוג</th>
+                                <th class="p-2 border-b">תוכן</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reports-list">
+                            <!-- Logs -->
+                        </tbody>
+                    </table>
+                </div>
+                <button onclick="exportCsv()" class="w-full py-2 bg-green-600 text-white rounded font-bold mt-2">
+                    📥 ייצוא ל-CSV
+                </button>
+            </div>
+        </main>
+        <!-- Navigation -->
+        <nav class="bg-white border-t border-gray-200 grid grid-cols-3 text-center py-2 text-xs text-gray-500 hidden fixed bottom-0 w-full max-w-md"
+            id="main-nav">
+            <button class="flex flex-col items-center justify-center space-y-1 p-2 text-indigo-600"
+                onclick="showView('view-main')">
+                <span class="text-xl">🏠</span>
+                <span>ראשי</span>
+            </button>
+            <button class="flex flex-col items-center justify-center space-y-1 p-2 hover:text-indigo-600"
+                onclick="showView('view-calendar')">
                 <span class="text-xl">📅</span>
-                <span class="text-xs">לוח שנה</span>
-              </button>
-              <button onclick="navigate('settings')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-amber-400 transition-colors">
+                <span>לוח שנה</span>
+            </button>
+            <button class="flex flex-col items-center justify-center space-y-1 p-2 hover:text-indigo-600"
+                onclick="showView('view-settings')">
                 <span class="text-xl">⚙️</span>
-                <span class="text-xs">הגדרות</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderSmsConfirmScreen() {
-      const today = new Date();
-      const shift = calculateShift(today);
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-          <button onclick="navigate('main')" class="flex items-center gap-2 text-slate-400 mb-6">
-            <span>→</span>
-            <span>חזרה</span>
-          </button>
-          
-          <div class="text-center mb-6">
-            <div class="w-16 h-16 bg-amber-500/20 rounded-2xl mx-auto mb-4 flex items-center justify-center border border-amber-500/30">
-              <span class="text-3xl">⚠️</span>
-            </div>
-            <h2 class="text-xl font-bold text-white mb-2">לפני שממשיכים</h2>
-          </div>
-          
-          <div class="bg-amber-500/10 rounded-2xl p-5 border border-amber-500/30 mb-6">
-            <p class="text-amber-300 font-medium mb-3">חשוב לוודא:</p>
-            <ul class="text-slate-300 space-y-2 text-sm">
-              <li class="flex items-start gap-2">
-                <span class="text-amber-400 mt-0.5">•</span>
-                <span>יש לבטל את כל החסימות הקיימות במכשיר למספר <span class="font-mono text-amber-400">${TARGET_PHONE}</span></span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-amber-400 mt-0.5">•</span>
-                <span>לאחר לחיצה על הכפתור, תיפתח אפליקציית ה-SMS</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-amber-400 mt-0.5">•</span>
-                <span><strong>יש ללחוץ "שלח"</strong> באפליקציית ה-SMS כדי להשלים את הפעולה</span>
-              </li>
-            </ul>
-          </div>
-          
-          <button onclick="handleSendShift()" class="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-amber-500/30 active:scale-[0.98] transition-transform flex items-center justify-center gap-3">
-            <span>📤</span>
-            הפעל אצלי אזעקות תורן
-          </button>
-        </div>
-      `;
-    }
-
-    function renderReplacementScreen() {
-      const availableReplacements = Object.values(EMPLOYEES).filter(emp => emp.number !== state.currentUser && emp.number !== 3);
-      
-      const buttons = availableReplacements.map(emp => `
-        <button onclick="handleReplacement(${emp.number})" class="w-full py-4 px-6 bg-slate-800/50 hover:bg-slate-700/50 text-white rounded-xl transition-all flex items-center justify-between border border-slate-700/50 hover:border-amber-500/50 active:scale-[0.98]">
-          <div class="flex items-center gap-3">
-            <span class="text-slate-500">👤</span>
-            <span class="font-medium">${emp.name}</span>
-          </div>
-        </button>
-      `).join('');
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-          <button onclick="navigate('main')" class="flex items-center gap-2 text-slate-400 mb-6">
-            <span>→</span>
-            <span>חזרה</span>
-          </button>
-          
-          <h2 class="text-xl font-bold text-white mb-2">בחר מחליף</h2>
-          <p class="text-slate-400 text-sm mb-6">מי יחליף אותך?</p>
-          
-          <div class="space-y-3">
-            ${buttons}
-          </div>
-        </div>
-      `;
-    }
-
-    function renderEmergencyScreen() {
-      const allEmployees = Object.values(EMPLOYEES).map(emp => `
-        <div class="flex items-center justify-between py-2 px-4 bg-slate-700/30 rounded-xl">
-          <div class="flex items-center gap-3">
-            <span class="text-red-400">✓</span>
-            <span class="text-white">${emp.name}</span>
-          </div>
-        </div>
-      `).join('');
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-red-900/20 to-slate-900 p-4">
-          <button onclick="navigate('main')" class="flex items-center gap-2 text-slate-400 mb-6">
-            <span>→</span>
-            <span>חזרה</span>
-          </button>
-          
-          <div class="text-center mb-8">
-            <div class="w-20 h-20 bg-red-500/20 rounded-2xl mx-auto mb-4 flex items-center justify-center border border-red-500/30">
-              <span class="text-4xl">⚠️</span>
-            </div>
-            <h2 class="text-2xl font-bold text-white mb-2">אזעקת חירום!</h2>
-            <p class="text-slate-400">האם להפעיל את כל 5 העובדים?</p>
-          </div>
-          
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-red-500/30 mb-6">
-            <div class="space-y-2">
-              ${allEmployees}
-            </div>
-          </div>
-          
-          <button onclick="handleEmergency()" class="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-red-500/30 active:scale-[0.98] transition-transform flex items-center justify-center gap-3">
-            <span>⚠️</span>
-            כן, שלח לכולם!
-          </button>
-          
-          <button onclick="navigate('main')" class="w-full py-4 bg-slate-700/50 text-slate-300 rounded-2xl font-medium mt-3">
-            ביטול
-          </button>
-        </div>
-      `;
-    }
-
-    function renderSettingsScreen() {
-      const userButtons = Object.values(EMPLOYEES).map(emp => `
-        <button onclick="changeUser(${emp.number})" class="w-full py-3 px-4 rounded-xl flex items-center justify-between transition-all ${state.currentUser === emp.number ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300' : 'bg-slate-700/30 border border-slate-600/30 text-white hover:bg-slate-600/30'}">
-          <span>${emp.name}</span>
-          ${state.currentUser === emp.number ? '<span>✓</span>' : ''}
-        </button>
-      `).join('');
-
-      const weeklyRows = [0, 1, 2, 3, 4].map(day => {
-        const options = Object.values(EMPLOYEES).map(emp => 
-          `<option value="${emp.number}" ${state.weeklySchedule[day] === emp.number ? 'selected' : ''}>${emp.name}</option>`
-        ).join('');
-        return `
-          <div class="flex items-center justify-between">
-            <span class="text-slate-300 w-20">יום ${DAYS_SHORT[day]}</span>
-            <select onchange="updateWeekly(${day}, this.value)" class="flex-1 mr-3 py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
-              ${options}
-            </select>
-          </div>
-        `;
-      }).join('');
-
-      const weekendRows = [0, 1, 2, 3].map(week => {
-        const options = Object.values(EMPLOYEES).map(emp => 
-          `<option value="${emp.number}" ${state.weekendSchedule[week] === emp.number ? 'selected' : ''}>${emp.name}</option>`
-        ).join('');
-        return `
-          <div class="flex items-center justify-between">
-            <span class="text-slate-300 w-20">שבוע ${week + 1}</span>
-            <select onchange="updateWeekend(${week}, this.value)" class="flex-1 mr-3 py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
-              ${options}
-            </select>
-          </div>
-        `;
-      }).join('');
-
-      const rotationRows = [0, 1, 2, 3].map(week => {
-        const options = Object.values(EMPLOYEES).map(emp => 
-          `<option value="${emp.number}" ${state.weeklyRotation[week] === emp.number ? 'selected' : ''}>${emp.name}</option>`
-        ).join('');
-        return `
-          <div class="flex items-center justify-between">
-            <span class="text-slate-300 w-20">שבוע ${week + 1}</span>
-            <select onchange="updateRotation(${week}, this.value)" class="flex-1 mr-3 py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
-              ${options}
-            </select>
-          </div>
-        `;
-      }).join('');
-
-      const tabs = [
-        { id: 'user', label: 'משתמש' },
-        { id: 'daily', label: 'יומי' },
-        { id: 'weekend', label: "סופ\"ש" },
-        { id: 'weekly', label: 'שבועי' }
-      ];
-
-      const tabsHtml = tabs.map(tab => `
-        <button onclick="setSettingsTab('${tab.id}')" class="flex-1 py-2 rounded-lg text-sm font-medium transition-all ${state.settingsTab === tab.id ? 'bg-amber-500 text-white' : 'bg-slate-700/30 text-slate-400'}">
-          ${tab.label}
-        </button>
-      `).join('');
-
-      let contentHtml = '';
-      
-      if (state.settingsTab === 'user') {
-        contentHtml = `
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
-            <h3 class="text-white font-medium mb-4">👤 משתמש נוכחי</h3>
-            <div class="space-y-2">
-              ${userButtons}
-            </div>
-          </div>
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
-            <h3 class="text-white font-medium mb-4">📞 מספר טלפון יעד</h3>
-            <div class="bg-slate-700/30 rounded-xl p-4 text-center">
-              <span class="text-amber-400 font-mono text-xl">${TARGET_PHONE}</span>
-              <p class="text-slate-500 text-xs mt-2">מספר זה קבוע ולא ניתן לשינוי</p>
-            </div>
-          </div>
-        `;
-      } else if (state.settingsTab === 'daily') {
-        contentHtml = `
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
-            <h3 class="text-white font-medium mb-4">📅 תורן יומי (א'-ה')</h3>
-            <p class="text-slate-400 text-sm mb-4">מי מקבל אזעקות בכל יום</p>
-            <div class="space-y-3">
-              ${weeklyRows}
-            </div>
-          </div>
-        `;
-      } else if (state.settingsTab === 'weekend') {
-        contentHtml = `
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
-            <h3 class="text-white font-medium mb-4">🔁 סבב סופ"ש (ו'-ש')</h3>
-            <p class="text-slate-400 text-sm mb-4">תורן יומי בימי שישי-שבת</p>
-            <div class="space-y-3">
-              ${weekendRows}
-            </div>
-          </div>
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
-            <h3 class="text-white font-medium mb-4">📆 תאריך התחלת סבב</h3>
-            <input type="date" value="${state.cycleStartDate.toISOString().split('T')[0]}" onchange="updateCycleStart(this.value)" class="w-full py-2.5 px-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none">
-          </div>
-        `;
-      } else if (state.settingsTab === 'weekly') {
-        contentHtml = `
-          <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
-            <h3 class="text-white font-medium mb-4">🔄 תורן שבועי</h3>
-            <p class="text-slate-400 text-sm mb-4">מתחלף כל יום ראשון - מקבל אזעקות כל השבוע</p>
-            <div class="space-y-3">
-              ${rotationRows}
-            </div>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 pb-8">
-          <button onclick="navigate('main')" class="flex items-center gap-2 text-slate-400 mb-6">
-            <span>→</span>
-            <span>חזרה</span>
-          </button>
-          
-          <h2 class="text-xl font-bold text-white mb-6">הגדרות</h2>
-          
-          <div class="flex gap-2 mb-6">
-            ${tabsHtml}
-          </div>
-          
-          ${contentHtml}
-        </div>
-      `;
-    }
-
-    function renderReportsScreen() {
-      const stats = {};
-      Object.values(EMPLOYEES).forEach(emp => {
-        stats[emp.name] = 0;
-      });
-      
-      let emergencyCount = 0;
-      const replacements = {};
-      
-      state.history.forEach(entry => {
-        if (entry.isEmergency) {
-          emergencyCount++;
-          return;
+                <span>הגדרות</span>
+            </button>
+        </nav>
+    </div>
+    <!-- Logic -->
+    <script>
+        // --- Data ---
+        const USERS = [
+            { id: 2, name: 'פריד', short: 'פריד' },
+            { id: 3, name: 'גיל', short: 'גיל' }, // Control
+            { id: 4, name: 'מוחמד', short: 'מוחמד' },
+            { id: 5, name: 'דניאל', short: 'דניאל' },
+            { id: 6, name: 'מאור', short: 'מאור' }
+        ];
+        let CONFIG = {
+            startDate: new Date('2026-01-04T00:00:00'), // Sunday
+            patterns: {
+                dailyFixed: [4, 5, 6, 3, 2], // Sun(0) -> Thu(4)
+                weekendCycle: [5, 4, 2, 6], // 4 weeks
+                weeklyCycle: [6, 5, 4, 2]   // 4 weeks
+            },
+            controlId: 3,
+            smsNumber: "0546687696"
+        };
+        // Holidays 2026
+        const HOLIDAYS = [
+            { start: '2026-03-16', end: '2026-03-17', name: 'פורים' },
+            { start: '2026-03-30', end: '2026-04-01', name: 'עיד אל-פיטר' },
+            { start: '2026-04-02', end: '2026-04-08', name: 'פסח' },
+            { start: '2026-04-22', end: '2026-04-22', name: 'עצמאות' },
+            { start: '2026-05-21', end: '2026-05-21', name: 'שבועות' },
+            { start: '2026-06-06', end: '2026-06-09', name: 'עיד אל-אדחא' },
+            { start: '2026-09-12', end: '2026-09-13', name: 'ראש השנה' },
+            { start: '2026-09-21', end: '2026-09-21', name: 'יום כיפור' },
+            { start: '2026-09-26', end: '2026-10-03', name: 'סוכות' },
+            { start: '2026-12-26', end: '2026-12-31', name: 'חנוכה' },
+        ];
+        let APP_STATE = {
+            currentUser: null,
+            replacementId: null,
+            pendingSmsBody: null,
+            calendarDate: new Date(),
+            history: []
+        };
+        // --- Core Logic ---
+        function getWeekIndex(date) {
+            const d = new Date(date); d.setHours(0, 0, 0, 0);
+            const start = new Date(CONFIG.startDate); start.setHours(0, 0, 0, 0);
+            const diffTime = d - start;
+            if (diffTime < 0) return 0;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return Math.floor(diffDays / 7);
         }
-        [entry.sms1, entry.sms2].forEach(name => {
-          if (name && stats[name] !== undefined) stats[name]++;
-        });
-        if (entry.replacement) {
-          replacements[entry.replacement] = (replacements[entry.replacement] || 0) + 1;
+        function getDailyShifterId(date) {
+            const day = date.getDay();
+            if (day === 5 || day === 6) {
+                const weekIdx = getWeekIndex(date);
+                const patternIdx = weekIdx % CONFIG.patterns.weekendCycle.length;
+                return CONFIG.patterns.weekendCycle[patternIdx];
+            }
+            return CONFIG.patterns.dailyFixed[day];
         }
-      });
-
-      const maxCount = Math.max(...Object.values(stats), 1);
-      
-      const statsDisplay = Object.entries(stats)
-        .sort((a, b) => b[1] - a[1])
-        .map(([name, count]) => `
-          <div class="flex items-center justify-between py-2">
-            <span class="text-slate-300">${name}</span>
-            <div class="flex items-center gap-3">
-              <div class="w-32 h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full" style="width: ${(count / maxCount) * 100}%"></div>
-              </div>
-              <span class="text-amber-400 font-mono w-8 text-left">${count}</span>
-            </div>
-          </div>
-        `).join('');
-
-      const replacementsDisplay = Object.entries(replacements).map(([r, c]) => `
-        <div class="flex items-center justify-between py-2 text-sm">
-          <span class="text-slate-300">${r}</span>
-          <span class="text-slate-400">${c} פעמים</span>
-        </div>
-      `).join('');
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 pb-8">
-          <button onclick="navigate('main')" class="flex items-center gap-2 text-slate-400 mb-6">
-            <span>→</span>
-            <span>חזרה</span>
-          </button>
-          
-          <h2 class="text-xl font-bold text-white mb-6">דוחות וסטטיסטיקות</h2>
-          
-          ${state.history.length === 0 ? `
-            <div class="bg-slate-800/50 rounded-2xl p-8 border border-slate-700/50 text-center">
-              <span class="text-4xl mb-4 block">📊</span>
-              <p class="text-slate-400">אין נתונים להצגה</p>
-              <p class="text-slate-500 text-sm mt-1">שלח תורנויות כדי לראות סטטיסטיקות</p>
-            </div>
-          ` : `
-            <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
-              <h3 class="text-white font-medium mb-4">👥 תורנויות לפי עובד</h3>
-              <div class="space-y-2">
-                ${statsDisplay}
-              </div>
-            </div>
-
-            ${Object.keys(replacements).length > 0 ? `
-              <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 mb-4">
-                <h3 class="text-white font-medium mb-4">🔄 החלפות שבוצעו</h3>
-                <div class="space-y-2">
-                  ${replacementsDisplay}
-                </div>
-              </div>
-            ` : ''}
-
-            ${emergencyCount > 0 ? `
-              <div class="bg-red-500/10 rounded-2xl p-5 border border-red-500/30 mb-4">
+        function getWeeklyShifterId(date) {
+            const weekIdx = getWeekIndex(date);
+            const patternIdx = weekIdx % CONFIG.patterns.weeklyCycle.length;
+            return CONFIG.patterns.weeklyCycle[patternIdx];
+        }
+        function getShiftData(date) {
+            const dailyId = getDailyShifterId(date);
+            const weeklyId = getWeeklyShifterId(date);
+            const controlId = CONFIG.controlId;
+            const smsIds = new Set([dailyId, weeklyId, controlId]);
+            const sortedIds = Array.from(smsIds).sort((a, b) => a - b);
+            return {
+                daily: USERS.find(u => u.id === dailyId) || { name: '?' },
+                weekly: USERS.find(u => u.id === weeklyId) || { name: '?' },
+                control: USERS.find(u => u.id === controlId) || { name: '?' },
+                smsBody: `!N${sortedIds.join('')}`,
+                shifters: sortedIds.map(id => USERS.find(u => u.id === id))
+            };
+        }
+        function isHoliday(date) {
+            const dStr = date.toISOString().split('T')[0];
+            return HOLIDAYS.find(h => dStr >= h.start && dStr <= h.end);
+        }
+        // --- Persistence ---
+        function loadState() {
+            const storedUser = localStorage.getItem('moledet_user_id');
+            if (storedUser) {
+                APP_STATE.currentUser = USERS.find(u => u.id == storedUser);
+            }
+            const storedConfig = localStorage.getItem('moledet_config');
+            if (storedConfig) {
+                try {
+                    const parsed = JSON.parse(storedConfig);
+                    if (parsed.patterns) CONFIG.patterns = parsed.patterns;
+                    if (parsed.startDate) CONFIG.startDate = new Date(parsed.startDate);
+                } catch (e) { console.error("Config load fail", e); }
+            }
+            const storedHistory = localStorage.getItem('moledet_history');
+            if (storedHistory) {
+                try { APP_STATE.history = JSON.parse(storedHistory); } catch (e) { }
+            }
+        }
+        function saveHistory(type, body) {
+            const entry = {
+                date: new Date().toISOString(),
+                user: APP_STATE.currentUser?.name,
+                type: type,
+                body: body
+            };
+            APP_STATE.history.unshift(entry);
+            localStorage.setItem('moledet_history', JSON.stringify(APP_STATE.history));
+        }
+        function savePatterns() {
+            const dailyInputs = document.querySelectorAll('.daily-select');
+            dailyInputs.forEach((sel, idx) => {
+                CONFIG.patterns.dailyFixed[idx] = parseInt(sel.value);
+            });
+            const weekendInputs = document.querySelectorAll('.weekend-select');
+            CONFIG.patterns.weekendCycle = Array.from(weekendInputs).map(i => parseInt(i.value));
+            const weeklyInputs = document.querySelectorAll('.weekly-select');
+            CONFIG.patterns.weeklyCycle = Array.from(weeklyInputs).map(i => parseInt(i.value));
+            localStorage.setItem('moledet_config', JSON.stringify({
+                startDate: CONFIG.startDate,
+                patterns: CONFIG.patterns
+            }));
+            alert('הגדרות נשמרו בהצלחה!');
+            renderMain();
+            renderCalendar();
+        }
+        function saveUser(id) {
+            localStorage.setItem('moledet_user_id', id);
+        }
+        // --- Init ---
+        function init() {
+            loadState();
+            if (!APP_STATE.currentUser) {
+                showView('view-user-select');
+                renderUserSelection();
+            } else {
+                showView('view-main');
+                renderMain();
+            }
+            renderSettings();
+            renderCalendar();
+        }
+        // --- Views ---
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            const nav = document.getElementById('main-nav');
+            if (viewId === 'view-user-select') nav.classList.add('hidden');
+            else nav.classList.remove('hidden');
+            if (viewId === 'view-calendar') renderCalendar();
+            if (viewId === 'view-settings') renderSettings();
+            if (viewId === 'view-reports') renderReports();
+        }
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600', 'active-tab');
+                el.classList.add('text-gray-500');
+            });
+            const btn = document.querySelector(`[data-tab="${tabId}"]`);
+            if (btn) {
+                btn.classList.remove('text-gray-500');
+                btn.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600', 'active-tab');
+            }
+        }
+        function userOptions(selectedId) {
+            return USERS.map(u => `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.name}</option>`).join('');
+        }
+        function renderSettings() {
+            const userSelect = document.getElementById('settings-user-select');
+            userSelect.innerHTML = USERS.map(u => `<option value="${u.id}" ${APP_STATE.currentUser?.id === u.id ? 'selected' : ''}>${u.name}</option>`).join('');
+            const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
+            document.getElementById('settings-daily-list').innerHTML = days.map((day, idx) => `
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span>⚠️</span>
-                    <span class="text-white font-medium">אזעקות חירום</span>
-                  </div>
-                  <span class="text-red-400 font-bold">${emergencyCount} פעמים</span>
+                    <span>${day}</span>
+                    <select class="daily-select border rounded p-1" data-idx="${idx}">
+                        ${userOptions(CONFIG.patterns.dailyFixed[idx])}
+                    </select>
                 </div>
-              </div>
-            ` : ''}
-
-            <button onclick="exportToCSV()" class="w-full py-3 bg-slate-700/50 text-white rounded-xl font-medium border border-slate-600/50 flex items-center justify-center gap-2">
-              <span>📥</span>
-              ייצא ל-CSV
-            </button>
-          `}
-        </div>
-      `;
-    }
-
-    function renderCalendarScreen() {
-      const today = new Date();
-      const currentMonth = state.currentMonth;
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      
-      let daysHtml = '';
-      
-      // ימים ריקים
-      for (let i = 0; i < firstDay.getDay(); i++) {
-        daysHtml += '<div class="aspect-square"></div>';
-      }
-      
-      // ימי החודש
-      for (let i = 1; i <= lastDay.getDate(); i++) {
-        const date = new Date(year, month, i);
-        const shift = calculateShift(date);
-        const isToday = date.toDateString() === today.toDateString();
-        const isWeekend = date.getDay() === 5 || date.getDay() === 6;
-        const holiday = isHoliday(date);
-        
-        // צבעים שונים לסופ"ש
-        let bgClass = 'bg-slate-800/50 border-slate-700/50';
-        if (isWeekend) {
-          bgClass = 'bg-purple-900/30 border-purple-500/30';
+            `).join('');
+            document.getElementById('settings-weekend-list').innerHTML = CONFIG.patterns.weekendCycle.map((uid, idx) => `
+                <div class="flex items-center justify-between">
+                    <span>שבוע ${idx + 1}</span>
+                    <select class="weekend-select border rounded p-1">
+                        ${userOptions(uid)}
+                    </select>
+                </div>
+            `).join('');
+            document.getElementById('settings-weekly-list').innerHTML = CONFIG.patterns.weeklyCycle.map((uid, idx) => `
+                <div class="flex items-center justify-between">
+                    <span>שבוע ${idx + 1}</span>
+                    <select class="weekly-select border rounded p-1">
+                        ${userOptions(uid)}
+                    </select>
+                </div>
+            `).join('');
         }
-        if (isToday) {
-          bgClass = 'bg-amber-500/20 border-amber-500/50';
+        function renderReports() {
+            const tbody = document.getElementById('reports-list');
+            if (APP_STATE.history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">אין מידע עדיין</td></tr>';
+                return;
+            }
+            tbody.innerHTML = APP_STATE.history.map(h => {
+                const d = new Date(h.date).toLocaleString('he-IL');
+                return `<tr>
+                    <td class="p-2 border-b">${d}</td>
+                    <td class="p-2 border-b">${h.user}</td>
+                    <td class="p-2 border-b">${h.type}</td>
+                    <td class="p-2 border-b font-mono">${h.body}</td>
+                 </tr>`
+            }).join('');
         }
-        if (holiday) {
-          bgClass = isWeekend ? 'bg-purple-900/50 border-purple-400/50' : 'bg-emerald-900/30 border-emerald-500/30';
+        function exportCsv() {
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM
+            csvContent += "Date,User,Type,Content\n";
+            APP_STATE.history.forEach(h => {
+                csvContent += `${h.date},${h.user},${h.type},${h.body}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "moledet_history.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
-        
-        // הצגת התורן היומי (SMS 1)
-        const mainShift = shift.sms1;
-        
-        daysHtml += `
-          <div class="aspect-square rounded-lg p-1 flex flex-col items-center justify-center text-xs border ${bgClass}">
-            <span class="font-medium ${isToday ? 'text-amber-400' : 'text-white'}">${i}</span>
-            <span class="text-slate-400 text-[10px] truncate w-full text-center">${EMPLOYEES[mainShift]?.name.slice(0, 3)}</span>
-            ${holiday ? '<span class="text-[8px] text-emerald-400">🎉</span>' : ''}
-          </div>
-        `;
-      }
-
-      const monthName = currentMonth.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
-
-      return `
-        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 pb-8">
-          <button onclick="navigate('main')" class="flex items-center gap-2 text-slate-400 mb-6">
-            <span>→</span>
-            <span>חזרה</span>
-          </button>
-          
-          <h2 class="text-xl font-bold text-white mb-6">לוח שנה</h2>
-          
-          <!-- ניווט חודשים -->
-          <div class="flex items-center justify-between mb-6 bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-            <button onclick="prevMonth()" class="w-10 h-10 flex items-center justify-center bg-slate-700/50 rounded-lg text-white hover:bg-slate-600/50 active:scale-95 transition-all">
-              <span class="text-xl">→</span>
-            </button>
-            <span class="text-white font-medium text-lg">${monthName}</span>
-            <button onclick="nextMonth()" class="w-10 h-10 flex items-center justify-center bg-slate-700/50 rounded-lg text-white hover:bg-slate-600/50 active:scale-95 transition-all">
-              <span class="text-xl">←</span>
-            </button>
-          </div>
-          
-          <!-- כותרות ימים -->
-          <div class="grid grid-cols-7 gap-1 mb-2">
-            ${DAYS_SHORT.map(day => `<div class="text-center text-slate-500 text-xs py-2">${day}</div>`).join('')}
-          </div>
-          
-          <!-- ימי החודש -->
-          <div class="grid grid-cols-7 gap-1">
-            ${daysHtml}
-          </div>
-
-          <!-- מקרא -->
-          <div class="mt-6 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-            <h4 class="text-slate-400 text-sm mb-3">מקרא:</h4>
-            <div class="space-y-2 text-xs">
-              <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded bg-purple-900/30 border border-purple-500/30"></div>
-                <span class="text-slate-300">שישי-שבת (סבב סופ"ש)</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded bg-emerald-900/30 border border-emerald-500/30"></div>
-                <span class="text-slate-300">חג 🎉</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded bg-amber-500/20 border border-amber-500/50"></div>
-                <span class="text-slate-300">היום</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- הערת אחזקה -->
-          <div class="mt-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-            <p class="text-slate-40
+        function renderUserSelection() {
+            const list = document.getElementById('user-list');
+            list.innerHTML = USERS.map(u => `
+                <button onclick="selectUser(${u.id})" class="w-full p-4 text-right bg-white border border-gray-200 rounded-lg shadow-sm hover:border-indigo-500 hover:ring-1 hover:ring-indigo-500 transition flex items-center justify-between group">
+                    <span class="font-bold text-lg text-gray-800 group-hover:text-indigo-700">${u.name}</span>
+                    <span class="text-sm text-gray-400 bg-gray-50 px-2 py-1 rounded">#${u.id}</span>
+                </button>
+            `).join('');
+        }
+        function selectUser(id) {
+            APP_STATE.currentUser = USERS.find(u => u.id === id);
+            saveUser(id);
+            showView('view-main');
+            renderMain();
+        }
+        function renderMain() {
+            const now = new Date();
+            // const now = new Date('2026-01-11'); // Test Date
+            document.getElementById('current-date-display').innerText = now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const shiftData = getShiftData(now);
+            const displayedShifters = new Set();
+            displayedShifters.add(shiftData.daily);
+            displayedShifters.add(shiftData.weekly);
+            // shiftData.control is implicitly NOT added unless equal to above
+            let finalSmsBody = shiftData.smsBody;
+            if (APP_STATE.replacementId) {
+                const myId = APP_STATE.currentUser.id;
+                const originalIds = shiftData.shifters.map(u => u.id);
+                if (originalIds.includes(myId)) {
+                    const newIds = originalIds.map(id => id === myId ? APP_STATE.replacementId : id);
+                    const uniqueSorted = Array.from(new Set(newIds)).sort((a, b) => a - b);
+                    finalSmsBody = `!N${uniqueSorted.join('')}`;
+                }
+                document.getElementById('btn-back-to-duty').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-back-to-duty').classList.add('hidden');
+            }
+            const list = document.getElementById('active-shifters-list');
+            list.innerHTML = Array.from(displayedShifters).map(u => `
+                <span class="inline-flex items-center px-4 py-2 rounded-full text-base font-medium shadow-sm border ${u.id === APP_STATE.currentUser?.id ? 'bg-indigo-100 text-indigo-800 border-indigo-200 ring-2 ring-indigo-400 ring-opacity-50' : 'bg-white text-gray-800 border-gray-200'}">
+                    ${u.name} ${u.id === APP_STATE.currentUser?.id ? ' (אני)' : ''}
+                </span>
+            `).join('');
+            const btnActivate = document.getElementById('btn-activate-me');
+            btnActivate.onclick = () => {
+                APP_STATE.pendingSmsBody = finalSmsBody;
+                showView('view-warning');
+            };
+            document.getElementById('btn-emergency').onclick = () => {
+                showView('view-emergency');
+            };
+            document.getElementById('btn-replace').onclick = () => {
+                showView('view-replace');
+                renderReplaceList();
+            };
+            document.getElementById('btn-back-to-duty').onclick = () => {
+                APP_STATE.replacementId = null;
+                APP_STATE.pendingSmsBody = shiftData.smsBody; // Reset
+                showView('view-warning');
+            };
+        }
+        function renderReplaceList() {
+            const list = document.getElementById('replace-list');
+            const myId = APP_STATE.currentUser.id;
+            const controlId = CONFIG.controlId;
+            const candidates = USERS.filter(u => u.id !== myId && u.id !== controlId);
+            list.innerHTML = candidates.map(u => `
+                <button onclick="confirmReplace(${u.id})" class="w-full p-4 text-right bg-white border border-gray-200 rounded-lg shadow-sm hover:border-indigo-500 font-bold text-lg text-gray-800">
+                    ${u.name}
+                </button>
+            `).join('');
+        }
+        function confirmReplace(replacementId) {
+            APP_STATE.replacementId = replacementId;
+            showView('view-main');
+            renderMain();
+            const btn = document.getElementById('btn-activate-me');
+            if (btn) btn.click();
+        }
+        document.getElementById('btn-confirm-activate').onclick = () => {
+            if (APP_STATE.pendingSmsBody) {
+                saveHistory('activate', APP_STATE.pendingSmsBody);
+                window.location.href = `sms:${CONFIG.smsNumber}?body=${encodeURIComponent(APP_STATE.pendingSmsBody)}`;
+            }
+            showView('view-main');
+        };
+        document.getElementById('btn-confirm-emergency').onclick = () => {
+            const allIds = USERS.map(u => u.id).sort((a, b) => a - b).join('');
+            const body = `!N${allIds}`;
+            saveHistory('emergency', body);
+            window.location.href = `sms:${CONFIG.smsNumber}?body=${encodeURIComponent(body)}`;
+            showView('view-main');
+        };
+        function changeMonth(delta) {
+            APP_STATE.calendarDate.setMonth(APP_STATE.calendarDate.getMonth() + delta);
+            renderCalendar();
+        }
+        function renderCalendar() {
+            const year = APP_STATE.calendarDate.getFullYear();
+            const month = APP_STATE.calendarDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const totalDays = lastDay.getDate();
+            const startDayOfWeek = firstDay.getDay();
+            document.getElementById('calendar-title').innerText = firstDay.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            for (let i = 0; i < startDayOfWeek; i++) {
+                grid.innerHTML += `<div class="aspect-square bg-gray-50 border border-gray-100"></div>`;
+            }
+            const todayStr = new Date().toISOString().split('T')[0];
+            for (let d = 1; d <= totalDays; d++) {
+                const current = new Date(year, month, d);
+                const currentStr = current.toISOString().split('T')[0];
+                const dayOfWeek = current.getDay();
+                const shiftData = getShiftData(current);
+                const holiday = isHoliday(current);
+                let bgClass = "bg-white";
+                if (dayOfWeek === 5 || dayOfWeek === 6) bgClass = "bg-purple-50 text-purple-900";
+                if (holiday) bgClass = "bg-green-50 text-green-900 border-green-200";
+                let borderClass = "border-gray-100";
+                if (currentStr === todayStr) borderClass = "border-orange-400 border-2 z-10";
+                grid.innerHTML += `
+                    <div class="aspect-square p-1 border ${borderClass} ${bgClass} rounded flex flex-col justify-between overflow-hidden relative">
+                        <span class="text-xs font-bold leading-none ${holiday ? 'text-green-700' : ''}">${d}</span>
+                        <span class="text-[0.6rem] leading-tight text-right truncate">
+                            ${holiday ? '🎄' : shiftData.daily.name}
+                        </span>
+                    </div>
+                `;
+            }
+        }
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
