@@ -345,11 +345,17 @@
         const subTextClass = isToday ? 'text-slate-700' : 'text-slate-400';
         
         const torenName = EMPLOYEES[shift.sms1]?.name.slice(0, 3);
+        const gibuyName = EMPLOYEES[shift.sms2]?.name.slice(0, 3);
         
         daysHtml += `
-          <div class="aspect-square ${bgClass} rounded-lg flex flex-col items-center justify-center p-1">
-            <span class="font-bold ${textClass}">${d}</span>
-            <span class="text-[10px] ${subTextClass}">${torenName}</span>
+          <div class="flex flex-col gap-0.5">
+            <div class="${bgClass} rounded-t-lg flex flex-col items-center justify-center py-1 px-0.5">
+              <span class="font-bold text-sm ${textClass}">${d}</span>
+              <span class="text-[9px] ${subTextClass}">${torenName}</span>
+            </div>
+            <div class="bg-slate-600 rounded-b-lg flex items-center justify-center py-0.5">
+              <span class="text-[8px] text-slate-300">${gibuyName}</span>
+            </div>
           </div>
         `;
       }
@@ -371,17 +377,33 @@
           
           <!-- מקרא -->
           <div class="bg-slate-700 rounded-xl p-4 mb-4 text-sm">
-            <div class="flex items-center gap-2 mb-2">
-              <div class="w-4 h-4 bg-purple-900/50 rounded"></div>
-              <span class="text-slate-300">שישי-שבת</span>
-            </div>
-            <div class="flex items-center gap-2 mb-2">
-              <div class="w-4 h-4 bg-emerald-900/50 rounded"></div>
-              <span class="text-slate-300">חג</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 bg-amber-500 rounded"></div>
-              <span class="text-slate-300">היום</span>
+            <div class="flex justify-between">
+              <!-- צד ימין: צבעי ימים -->
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 bg-purple-900/50 rounded"></div>
+                  <span class="text-slate-300">שישי-שבת</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 bg-emerald-900/50 rounded"></div>
+                  <span class="text-slate-300">חג</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 bg-amber-500 rounded"></div>
+                  <span class="text-slate-300">היום</span>
+                </div>
+              </div>
+              <!-- צד שמאל: סוגי מלבנים -->
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-5 bg-slate-600 rounded"></div>
+                  <span class="text-slate-300">תורן</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-3 bg-slate-500 rounded"></div>
+                  <span class="text-slate-300">גיבוי</span>
+                </div>
+              </div>
             </div>
           </div>
           
